@@ -100,13 +100,46 @@ public class ItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             boolean isCurrentlyExpanded = expandStateMap.get(listId);
             expandStateMap.put(listId, !isCurrentlyExpanded);
 
-            // Debug log
-            System.out.println("Toggling section " + listId + " from " +
-                    (isCurrentlyExpanded ? "expanded" : "collapsed") +
-                    " to " + (!isCurrentlyExpanded ? "expanded" : "collapsed"));
+            // Find the header position
+            int headerPosition = -1;
+            for (int i = 0; i < dataList.size(); i++) {
+                if (dataList.get(i) instanceof HeaderItem &&
+                        ((HeaderItem) dataList.get(i)).getListId() == listId) {
+                    headerPosition = i;
+                    break;
+                }
+            }
 
-            // Rebuild the list with the new expansion state
-            rebuildList();
+            if (headerPosition != -1) {
+                // Notify that this particular header has changed (for icon rotation)
+                notifyItemChanged(headerPosition);
+
+                // Handle expansion or collapse
+                if (isCurrentlyExpanded) {
+                    // Collapsing - remove child items
+                    int itemsRemoved = 0;
+                    while (headerPosition + 1 < dataList.size() &&
+                            dataList.get(headerPosition + 1) instanceof ItemData) {
+                        dataList.remove(headerPosition + 1);
+                        itemsRemoved++;
+                    }
+
+                    if (itemsRemoved > 0) {
+                        notifyItemRangeRemoved(headerPosition + 1, itemsRemoved);
+                    }
+                } else {
+                    // Expanding - add child items
+                    List<Item> items = originalData.get(listId);
+                    List<ListItem> itemsToAdd = new ArrayList<>();
+
+                    for (Item item : items) {
+                        itemsToAdd.add(new ItemData(item));
+                    }
+
+                    dataList.addAll(headerPosition + 1, itemsToAdd);
+                    notifyItemRangeInserted(headerPosition + 1, itemsToAdd.size());
+                }
+            }
         }
     }
 
